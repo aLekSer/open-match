@@ -78,6 +78,8 @@ func (rb *redisBackend) DeleteBackfill(ctx context.Context, id string) error {
 
 // UpdateBackfill updates an existing Backfill with a new data. Caller has to provide a custom updateFunc if this function is called not for the game server.
 func (rb *redisBackend) UpdateBackfill(ctx context.Context, isGS bool, backfill *pb.Backfill, updateFunc func(current *pb.Backfill, new *pb.Backfill) (*pb.Backfill, error)) (*pb.Backfill, error) {
+	var backfillBytes []byte
+	var err error
 	redisConn, err := rb.redisPool.GetContext(ctx)
 	if err != nil {
 		return nil, status.Errorf(codes.Unavailable, "UpdateBackfill, id: %s, failed to connect to redis: %v", backfill.GetId(), err)
@@ -85,13 +87,13 @@ func (rb *redisBackend) UpdateBackfill(ctx context.Context, isGS bool, backfill 
 	defer handleConnectionClose(&redisConn)
 
 	if isGS {
-		value, err := proto.Marshal(backfill)
+		backfillBytes, err = proto.Marshal(backfill)
 		if err != nil {
 			err = errors.Wrapf(err, "failed to marshal the backfill proto, id: %s", backfill.GetId())
 			return nil, status.Errorf(codes.Internal, "%v", err)
 		}
 
-		err = redisConn.Send("SET", backfill.GetId(), value)
+		err = redisConn.Send("SET", backfill.GetId(), backfillBytes)
 		if err != nil {
 			err = errors.Wrapf(err, "failed to set the value for backfill, id: %s", backfill.GetId())
 			return nil, status.Errorf(codes.Internal, "%v", err)
@@ -117,7 +119,7 @@ func (rb *redisBackend) UpdateBackfill(ctx context.Context, isGS bool, backfill 
 			return nil, status.Error(codes.InvalidArgument, err.Error())
 		}
 
-		value, err := proto.Marshal(backfillToSet)
+		backfillBytes, err = proto.Marshal(backfillToSet)
 		if err != nil {
 			err = errors.Wrapf(err, "failed to marshal the backfill proto, id: %s", backfillToSet.GetId())
 			return nil, status.Errorf(codes.Internal, "%v", err)
@@ -128,7 +130,7 @@ func (rb *redisBackend) UpdateBackfill(ctx context.Context, isGS bool, backfill 
 			return nil, status.Errorf(codes.Internal, "failed to MULTI, id: %s", backfill.GetId())
 		}
 
-		err = redisConn.Send("SET", backfill.GetId(), value)
+		err = redisConn.Send("SET", backfill.GetId(), backfillBytes)
 		if err != nil {
 			err = errors.Wrapf(err, "failed to set the value for backfill, id: %s", backfillToSet.GetId())
 			return nil, status.Errorf(codes.Internal, "%v", err)
