@@ -52,7 +52,7 @@ type TeamShooterScenario struct {
 	maxRegions int
 	// Number of tickets which form a match.
 	playersPerGame int
-	// For each pair of consequitive values, the value to split profiles on by
+	// For each pair of consecutive values, the value to split profiles on by
 	// skill.
 	skillBoundaries []float64
 	// Maximum difference between two tickets to consider a match valid.

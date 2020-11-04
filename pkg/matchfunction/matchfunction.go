@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package matchfunction provides helper methods to simplify authoring a match fuction.
+// Package matchfunction provides helper methods to simplify authoring a match function.
 package matchfunction
 
 import (
@@ -46,7 +46,7 @@ func QueryPool(ctx context.Context, queryClient pb.QueryServiceClient, pool *pb.
 	}
 }
 
-// QueryPools queries queryService and returns the a map of pool names to the tickets belonging to those pools.
+// QueryPools queries queryService and returns the map of pool names to the tickets belonging to those pools.
 func QueryPools(ctx context.Context, queryClient pb.QueryServiceClient, pools []*pb.Pool, opts ...grpc.CallOption) (map[string][]*pb.Ticket, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()

@@ -40,7 +40,7 @@ var (
 )
 
 // queryService API provides utility functions for common MMF functionality such
-// as retreiving Tickets from state storage.
+// as retrieving Tickets from state storage.
 type queryService struct {
 	cfg config.View
 	tc  *ticketCache

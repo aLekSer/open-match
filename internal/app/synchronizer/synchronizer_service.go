@@ -168,7 +168,7 @@ func (s *synchronizerService) Synchronize(stream ipb.Synchronizer_SynchronizeSer
 // - Sends a registration request, starting a cycle if none is running.
 // - The cycle creates the registration.
 // - The registration is sent back to the origin synchronize call on channel as
-//     part of the sychronize request.
+//     part of the synchronize request.
 
 type registrationRequest struct {
 	resp chan *registration
