@@ -281,52 +281,81 @@ func TestDoGetTicket(t *testing.T) {
 			},
 		},
 	}
-
-	tests := []struct {
-		description string
-		preAction   func(context.Context, context.CancelFunc, statestore.Service)
-		wantTicket  *pb.Ticket
-		wantCode    codes.Code
-	}{
-		{
-			description: "expect unavailable code since context is canceled before being called",
-			preAction: func(_ context.Context, cancel context.CancelFunc, _ statestore.Service) {
-				cancel()
+	fakeBackfill := &pb.Backfill{
+		Id: "1",
+		SearchFields: &pb.SearchFields{
+			DoubleArgs: map[string]float64{
+				"test-arg": 1,
 			},
-			wantCode: codes.Unavailable,
-		},
-		{
-			description: "expect not found code since ticket does not exist",
-			preAction:   func(_ context.Context, _ context.CancelFunc, _ statestore.Service) {},
-			wantCode:    codes.NotFound,
-		},
-		{
-			description: "expect ok code with output ticket equivalent to fakeTicket",
-			preAction: func(ctx context.Context, _ context.CancelFunc, store statestore.Service) {
-				store.CreateTicket(ctx, fakeTicket)
-				store.IndexTicket(ctx, fakeTicket)
-			},
-			wantCode:   codes.OK,
-			wantTicket: fakeTicket,
 		},
 	}
 
-	for _, test := range tests {
-		test := test
-		t.Run(test.description, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(utilTesting.NewContext(t))
-			store, closer := statestoreTesting.NewStoreServiceForTesting(t, viper.New())
-			defer closer()
+	tickets := []Ticket{fakeTicket, fakeBackfill}
 
-			test.preAction(ctx, cancel, store)
+	for _, object := range tickets {
+		tests := []struct {
+			description string
+			preAction   func(context.Context, context.CancelFunc, statestore.Service)
+			wantTicket  Ticket
+			wantCode    codes.Code
+		}{
+			{
+				description: "expect unavailable code since context is canceled before being called",
+				preAction: func(_ context.Context, cancel context.CancelFunc, _ statestore.Service) {
+					cancel()
+				},
+				wantCode: codes.Unavailable,
+			},
+			{
+				description: "expect not found code since ticket does not exist",
+				preAction:   func(_ context.Context, _ context.CancelFunc, _ statestore.Service) {},
+				wantCode:    codes.NotFound,
+			},
+			{
+				description: "expect ok code with output ticket equivalent to fakeTicket",
+				preAction: func(ctx context.Context, _ context.CancelFunc, store statestore.Service) {
+					switch object.(type) {
+					case *pb.Ticket:
+						store.CreateTicket(ctx, object.(*pb.Ticket))
+						store.IndexTicket(ctx, object.(*pb.Ticket))
+					case *pb.Backfill:
+						store.CreateBackfill(ctx, object.(*pb.Backfill))
+					}
+				},
+				wantCode:   codes.OK,
+				wantTicket: fakeTicket,
+			},
+		}
 
-			ticket, err := store.GetTicket(ctx, fakeTicket.GetId())
-			require.Equal(t, test.wantCode.String(), status.Convert(err).Code().String())
+		for _, test := range tests {
+			test := test
+			t.Run(test.description, func(t *testing.T) {
+				ctx, cancel := context.WithCancel(utilTesting.NewContext(t))
+				store, closer := statestoreTesting.NewStoreServiceForTesting(t, viper.New())
+				defer closer()
 
-			if err == nil {
-				require.Equal(t, test.wantTicket.GetId(), ticket.GetId())
-				require.Equal(t, test.wantTicket.SearchFields.DoubleArgs, ticket.SearchFields.DoubleArgs)
-			}
-		})
+				test.preAction(ctx, cancel, store)
+
+				var ticket Ticket
+				var err error
+				switch object.(type) {
+				case *pb.Ticket:
+					ticket, err = store.GetTicket(ctx, object.GetId())
+				case *pb.Backfill:
+					ticket, err = store.GetBackfill(ctx, object.GetId())
+				}
+				require.Equal(t, test.wantCode.String(), status.Convert(err).Code().String())
+
+				if err == nil {
+					require.Equal(t, test.wantTicket.GetId(), ticket.GetId())
+					require.Equal(t, test.wantTicket.GetSearchFields().DoubleArgs, ticket.GetSearchFields().DoubleArgs)
+				}
+			})
+		}
 	}
+}
+
+type Ticket interface {
+	GetId() string
+	GetSearchFields() *pb.SearchFields
 }

@@ -16,6 +16,7 @@ package frontend
 
 import (
 	"context"
+	"errors"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
@@ -94,6 +95,11 @@ func doCreateTicket(ctx context.Context, req *pb.CreateTicketRequest, store stat
 	return ticket, nil
 }
 
+// GetBackfill fetches a Backfill object by its ID.
+func (s *frontendService) GetBackfill(ctx context.Context, req *pb.GetBackfillRequest) (*pb.Backfill, error) {
+	return s.store.GetBackfill(ctx, req.GetBackfillId())
+}
+
 // CreateBackfill creates a new Backfill object.
 // it assigns an unique Id to the input Backfill and record it in state storage.
 // A Backfill is considered as ready for matchmaking once it is created.
@@ -140,6 +146,49 @@ func doCreateBackfill(ctx context.Context, req *pb.CreateBackfillRequest, store 
 	*/
 
 	return backfill, nil
+}
+
+// UpdateBackfill updates a Backfill object, if present.
+func (s *frontendService) UpdateBackfill(ctx context.Context, req *pb.UpdateBackfillRequest) (*pb.Backfill, error) {
+
+	// Generate an id and create a Ticket in state storage
+	backfill, ok := proto.Clone(req.BackfillTicket).(*pb.Backfill)
+	if !ok {
+		return nil, status.Error(codes.Internal, "failed to clone input ticket proto")
+	}
+
+	sfCount := 0
+	sfCount += len(backfill.GetSearchFields().GetDoubleArgs())
+	sfCount += len(backfill.GetSearchFields().GetStringArgs())
+	sfCount += len(backfill.GetSearchFields().GetTags())
+	stats.Record(ctx, searchFieldsPerBackfill.M(int64(sfCount)))
+	stats.Record(ctx, totalBytesPerBackfill.M(int64(proto.Size(backfill))))
+
+	// Update generation here, because Frontend is used by GameServer only
+	backfill.Generation += 1
+	backfill, err := s.store.UpdateBackfill(ctx, true, backfill, func(current *pb.Backfill, new *pb.Backfill) (*pb.Backfill, error) {
+		if current.Generation-new.Generation != 1 {
+			return nil, errors.New("invalid state transition")
+		}
+		return new, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	// TODO: add IndexBackfill functionality
+	/*
+		err = store.IndexBackfill(ctx, ticket)
+		if err != nil {
+			return nil, err
+		}
+	*/
+
+	return backfill, nil
+}
+
+// DeleteBackfill deletes a Backfill by its ID.
+func (s *frontendService) DeleteBackfill(ctx context.Context, req *pb.DeleteBackfillRequest) (*empty.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "not implemented")
 }
 
 // DeleteTicket immediately stops Open Match from using the Ticket for matchmaking and removes the Ticket from state storage.
@@ -232,20 +281,5 @@ func doWatchAssignments(ctx context.Context, id string, sender func(*pb.Assignme
 // AcknowledgeBackfill is used to notify OpenMatch about GameServer connection info.
 // This triggers an assignment process.
 func (s *frontendService) AcknowledgeBackfill(ctx context.Context, req *pb.AcknowledgeBackfillRequest) (*pb.Backfill, error) {
-	return nil, status.Error(codes.Unimplemented, "not implemented")
-}
-
-// DeleteBackfill deletes a Backfill by its ID.
-func (s *frontendService) DeleteBackfill(ctx context.Context, req *pb.DeleteBackfillRequest) (*empty.Empty, error) {
-	return nil, status.Error(codes.Unimplemented, "not implemented")
-}
-
-// GetBackfill fetches a Backfill object by its ID.
-func (s *frontendService) GetBackfill(ctx context.Context, req *pb.GetBackfillRequest) (*pb.Backfill, error) {
-	return nil, status.Error(codes.Unimplemented, "not implemented")
-}
-
-// UpdateBackfill updates a Backfill object, if present.
-func (s *frontendService) UpdateBackfill(ctx context.Context, req *pb.UpdateBackfillRequest) (*pb.Backfill, error) {
 	return nil, status.Error(codes.Unimplemented, "not implemented")
 }
