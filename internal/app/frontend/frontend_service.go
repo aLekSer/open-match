@@ -120,7 +120,7 @@ func doCreateBackfill(ctx context.Context, req *pb.CreateBackfillRequest, store 
 	// Generate an id and create a Backfill in state storage
 	backfill, ok := proto.Clone(req.Backfill).(*pb.Backfill)
 	if !ok {
-		return nil, status.Error(codes.Internal, "failed to clone input ticket proto")
+		return nil, status.Error(codes.Internal, "failed to clone input backfill proto")
 	}
 
 	backfill.Id = xid.New().String()
@@ -150,11 +150,9 @@ func doCreateBackfill(ctx context.Context, req *pb.CreateBackfillRequest, store 
 
 // UpdateBackfill updates a Backfill object, if present.
 func (s *frontendService) UpdateBackfill(ctx context.Context, req *pb.UpdateBackfillRequest) (*pb.Backfill, error) {
-
-	// Generate an id and create a Ticket in state storage
 	backfill, ok := proto.Clone(req.BackfillTicket).(*pb.Backfill)
 	if !ok {
-		return nil, status.Error(codes.Internal, "failed to clone input ticket proto")
+		return nil, status.Error(codes.Internal, "failed to clone input backfill proto")
 	}
 
 	sfCount := 0
@@ -188,7 +186,21 @@ func (s *frontendService) UpdateBackfill(ctx context.Context, req *pb.UpdateBack
 
 // DeleteBackfill deletes a Backfill by its ID.
 func (s *frontendService) DeleteBackfill(ctx context.Context, req *pb.DeleteBackfillRequest) (*empty.Empty, error) {
-	return nil, status.Error(codes.Unimplemented, "not implemented")
+	id := req.GetBackfillId()
+	err := doDeleteTicket(ctx, id, s.store)
+	if err != nil {
+		logger.WithFields(logrus.Fields{
+			"error": err.Error(),
+			"id":    id,
+		}).Error("failed to delete the backfill")
+	}
+	return &empty.Empty{}, err
+}
+
+func doDeleteBackfill(ctx context.Context, id string, store statestore.Service) error {
+	err := store.DeleteBackfill(ctx, id)
+	//TODO: delete pending tickets when statestore is ready
+	return err
 }
 
 // DeleteTicket immediately stops Open Match from using the Ticket for matchmaking and removes the Ticket from state storage.
