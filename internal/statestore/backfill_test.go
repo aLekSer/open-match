@@ -186,7 +186,7 @@ func TestGetBackfill(t *testing.T) {
 			description:     "item of a wrong type is requested, err expected",
 			backfillID:      "wrong-type-key",
 			expectedCode:    codes.Internal,
-			expectedMessage: "failed to unmarshal internal backfill, id: wrong-type-key: proto: can't skip unknown wire type",
+			expectedMessage: "failed to unmarshal internal backfill, id: wrong-type-key:",
 		},
 	}
 
