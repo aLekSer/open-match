@@ -94,11 +94,6 @@ func doCreateTicket(ctx context.Context, req *pb.CreateTicketRequest, store stat
 	return ticket, nil
 }
 
-// GetBackfill fetches a Backfill object by its ID.
-func (s *frontendService) GetBackfill(ctx context.Context, req *pb.GetBackfillRequest) (*pb.Backfill, error) {
-	return s.store.GetBackfill(ctx, req.GetBackfillId())
-}
-
 // CreateBackfill creates a new Backfill object.
 // it assigns an unique Id to the input Backfill and record it in state storage.
 // A Backfill is considered as ready for matchmaking once it is created.
@@ -132,18 +127,10 @@ func doCreateBackfill(ctx context.Context, req *pb.CreateBackfillRequest, store 
 	stats.Record(ctx, searchFieldsPerBackfill.M(int64(sfCount)))
 	stats.Record(ctx, totalBytesPerBackfill.M(int64(proto.Size(backfill))))
 
-	err := store.CreateBackfill(ctx, backfill)
+	err := store.CreateBackfill(ctx, backfill, []string{})
 	if err != nil {
 		return nil, err
 	}
-	// TODO: add IndexBackfill functionality
-	/*
-		err = store.IndexBackfill(ctx, ticket)
-		if err != nil {
-			return nil, err
-		}
-	*/
-
 	return backfill, nil
 }
 
@@ -288,4 +275,10 @@ func doWatchAssignments(ctx context.Context, id string, sender func(*pb.Assignme
 // This triggers an assignment process.
 func (s *frontendService) AcknowledgeBackfill(ctx context.Context, req *pb.AcknowledgeBackfillRequest) (*pb.Backfill, error) {
 	return nil, status.Error(codes.Unimplemented, "not implemented")
+}
+
+// GetBackfill fetches a Backfill object by its ID.
+func (s *frontendService) GetBackfill(ctx context.Context, req *pb.GetBackfillRequest) (*pb.Backfill, error) {
+	bf, _, err := s.store.GetBackfill(ctx, req.GetBackfillId())
+	return bf, err
 }
