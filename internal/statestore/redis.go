@@ -53,13 +53,13 @@ func (rb *redisBackend) NewMutex(key string) *redisLocker {
 }
 
 // Lock locks r. In case it returns an error on failure, you may retry to acquire the lock by calling this method again.
-func (r redisLocker) Lock() error {
-	return r.mutex.Lock()
+func (r redisLocker) Lock(ctx context.Context) error {
+	return r.mutex.LockContext(ctx)
 }
 
 // Unlock unlocks r and returns the status of unlock.
-func (r redisLocker) Unlock() (bool, error) {
-	return r.mutex.Unlock()
+func (r redisLocker) Unlock(ctx context.Context) (bool, error) {
+	return r.mutex.UnlockContext(ctx)
 }
 
 type redisBackend struct {

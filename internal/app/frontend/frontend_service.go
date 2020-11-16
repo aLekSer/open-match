@@ -143,8 +143,11 @@ func (s *frontendService) UpdateBackfill(ctx context.Context, req *pb.UpdateBack
 
 	bfId := backfill.Id
 	m := s.store.NewMutex(bfId)
-	m.Lock()
-	defer m.Unlock()
+	err := m.Lock(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer m.Unlock(ctx)
 	bfStored, associatedTickets, err := s.store.GetBackfill(ctx, bfId)
 	if err != nil {
 		return nil, err

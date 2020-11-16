@@ -50,3 +50,30 @@ func TestCreateGetBackfill(t *testing.T) {
 	require.Nil(t, err)
 	require.Equal(t, b1, get)
 }
+
+// TestUpdateBackfill Update Backfill test
+func TestUpdateBackfill(t *testing.T) {
+	om := newOM(t)
+	ctx := context.Background()
+
+	bf := &pb.Backfill{SearchFields: &pb.SearchFields{
+		StringArgs: map[string]string{
+			"search": "me",
+		},
+	},
+	}
+	bfCreated, err := om.Frontend().CreateBackfill(ctx, &pb.CreateBackfillRequest{Backfill: bf})
+	require.Nil(t, err)
+
+	bfCreated.SearchFields.StringArgs["key"] = "val"
+	bfUpdated, err := om.Frontend().UpdateBackfill(ctx, &pb.UpdateBackfillRequest{BackfillTicket: bfCreated})
+	require.Nil(t, err)
+
+	// No changes to CreateTime
+	bfCreated.CreateTime = bfUpdated.CreateTime
+
+	require.Nil(t, err)
+	get, err := om.Frontend().GetBackfill(ctx, &pb.GetBackfillRequest{BackfillId: bf.Id})
+	require.Nil(t, err)
+	require.Equal(t, bf, get)
+}
