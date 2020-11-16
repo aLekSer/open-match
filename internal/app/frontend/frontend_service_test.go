@@ -364,7 +364,7 @@ func TestDoGetTicket(t *testing.T) {
 				case *pb.Ticket:
 					ticket, err = store.GetTicket(ctx, object.GetId())
 				case *pb.Backfill:
-					ticket, err = store.GetBackfill(ctx, object.GetId())
+					ticket, _, err = store.GetBackfill(ctx, object.GetId())
 				}
 				require.Equal(t, test.wantCode.String(), status.Convert(err).Code().String())
 

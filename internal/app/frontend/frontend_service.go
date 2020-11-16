@@ -16,7 +16,6 @@ package frontend
 
 import (
 	"context"
-	"errors"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
@@ -155,31 +154,26 @@ func (s *frontendService) UpdateBackfill(ctx context.Context, req *pb.UpdateBack
 		return nil, status.Error(codes.Internal, "failed to clone input backfill proto")
 	}
 
-	sfCount := 0
-	sfCount += len(backfill.GetSearchFields().GetDoubleArgs())
-	sfCount += len(backfill.GetSearchFields().GetStringArgs())
-	sfCount += len(backfill.GetSearchFields().GetTags())
-	stats.Record(ctx, searchFieldsPerBackfill.M(int64(sfCount)))
-	stats.Record(ctx, totalBytesPerBackfill.M(int64(proto.Size(backfill))))
-
-	// Update generation here, because Frontend is used by GameServer only
-	backfill.Generation += 1
-	backfill, err := s.store.UpdateBackfill(ctx, true, backfill, func(current *pb.Backfill, new *pb.Backfill) (*pb.Backfill, error) {
-		if current.Generation-new.Generation != 1 {
-			return nil, errors.New("invalid state transition")
-		}
-		return new, nil
-	})
+	bfId := backfill.Id
+	m := s.store.NewMutex(bfId)
+	m.Lock()
+	defer m.Unlock()
+	bfStored, associatedTickets, err := s.store.GetBackfill(ctx, bfId)
 	if err != nil {
 		return nil, err
 	}
-	// TODO: add IndexBackfill functionality
-	/*
-		err = store.IndexBackfill(ctx, ticket)
-		if err != nil {
-			return nil, err
-		}
-	*/
+
+	err = s.store.DeleteTicketsFromPendingRelease(ctx, associatedTickets)
+	if err != nil {
+		return nil, err
+	}
+
+	// Update generation here, because Frontend is used by GameServer only
+	backfill.Generation = bfStored.Generation + 1
+	err = s.store.UpdateBackfill(ctx, backfill, []string{})
+	if err != nil {
+		return nil, err
+	}
 
 	return backfill, nil
 }
