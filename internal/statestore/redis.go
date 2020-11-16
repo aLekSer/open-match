@@ -54,12 +54,12 @@ func (rb *redisBackend) NewMutex(key string) *redisLocker {
 
 // Lock locks r. In case it returns an error on failure, you may retry to acquire the lock by calling this method again.
 func (r redisLocker) Lock(ctx context.Context) error {
-	return r.mutex.LockContext(ctx)
+	return r.mutex.LockContext(nil)
 }
 
 // Unlock unlocks r and returns the status of unlock.
 func (r redisLocker) Unlock(ctx context.Context) (bool, error) {
-	return r.mutex.UnlockContext(ctx)
+	return r.mutex.UnlockContext(nil)
 }
 
 type redisBackend struct {
@@ -123,7 +123,7 @@ func GetRedisPool(cfg config.View) *redis.Pool {
 	if cfg.IsSet("redis.sentinelHostname") {
 		sentinelPool := getSentinelPool(cfg)
 		dialFunc = func(ctx context.Context) (redis.Conn, error) {
-			if ctx.Err() != nil {
+			if ctx != nil && ctx.Err() != nil {
 				return nil, ctx.Err()
 			}
 
@@ -181,7 +181,7 @@ func getSentinelPool(cfg config.View) *redis.Pool {
 		Wait:         true,
 		TestOnBorrow: testOnBorrow,
 		DialContext: func(ctx context.Context) (redis.Conn, error) {
-			if ctx.Err() != nil {
+			if ctx != nil && ctx.Err() != nil {
 				return nil, ctx.Err()
 			}
 			redisLogger.WithField("sentinelAddr", sentinelAddr).Debug("Attempting to connect to Redis Sentinel")

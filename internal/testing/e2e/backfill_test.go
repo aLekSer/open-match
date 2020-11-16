@@ -73,7 +73,7 @@ func TestUpdateBackfill(t *testing.T) {
 	bfCreated.CreateTime = bfUpdated.CreateTime
 
 	require.Nil(t, err)
-	get, err := om.Frontend().GetBackfill(ctx, &pb.GetBackfillRequest{BackfillId: bf.Id})
+	get, err := om.Frontend().GetBackfill(ctx, &pb.GetBackfillRequest{BackfillId: bfCreated.Id})
 	require.Nil(t, err)
-	require.Equal(t, bf, get)
+	require.Equal(t, bfCreated.SearchFields.StringArgs, get.SearchFields.StringArgs)
 }
