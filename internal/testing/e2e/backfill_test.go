@@ -70,10 +70,15 @@ func TestUpdateBackfill(t *testing.T) {
 	require.Nil(t, err)
 
 	// No changes to CreateTime
-	bfCreated.CreateTime = bfUpdated.CreateTime
+	assert.Equal(t, bfCreated.CreateTime.GetNanos(), bfUpdated.CreateTime.GetNanos())
 
-	require.Nil(t, err)
 	get, err := om.Frontend().GetBackfill(ctx, &pb.GetBackfillRequest{BackfillId: bfCreated.Id})
 	require.Nil(t, err)
 	require.Equal(t, bfCreated.SearchFields.StringArgs, get.SearchFields.StringArgs)
+	_, err = om.Frontend().DeleteBackfill(ctx, &pb.DeleteBackfillRequest{BackfillId: bfCreated.Id})
+	require.Nil(t, err)
+
+	get, err = om.Frontend().GetBackfill(ctx, &pb.GetBackfillRequest{BackfillId: bfCreated.Id})
+	require.Error(t, err, "Backfill id: bup6oduvvhfj2n8o86b0 not found")
+	require.Nil(t, get)
 }

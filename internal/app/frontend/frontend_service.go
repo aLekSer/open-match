@@ -142,15 +142,13 @@ func (s *frontendService) UpdateBackfill(ctx context.Context, req *pb.UpdateBack
 	}
 
 	bfId := backfill.Id
-	// TODO: fix lock/unlock in statestore
-	/*
-		m := s.store.NewMutex(bfId)
-		err := m.Lock(ctx)
-		if err != nil {
-			return nil, err
-		}
-		defer m.Unlock(ctx)
-	*/
+	m := s.store.NewMutex(bfId + "/id")
+
+	err := m.Lock(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer m.Unlock(ctx)
 	bfStored, associatedTickets, err := s.store.GetBackfill(ctx, bfId)
 	if err != nil {
 		return nil, err
@@ -173,21 +171,33 @@ func (s *frontendService) UpdateBackfill(ctx context.Context, req *pb.UpdateBack
 
 // DeleteBackfill deletes a Backfill by its ID.
 func (s *frontendService) DeleteBackfill(ctx context.Context, req *pb.DeleteBackfillRequest) (*empty.Empty, error) {
-	id := req.GetBackfillId()
-	err := doDeleteTicket(ctx, id, s.store)
+	bfId := req.GetBackfillId()
+
+	m := s.store.NewMutex(bfId + "/id")
+	err := m.Lock(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer m.Unlock(ctx)
+
+	_, associatedTickets, err := s.store.GetBackfill(ctx, bfId)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.store.DeleteTicketsFromPendingRelease(ctx, associatedTickets)
+	if err != nil {
+		return nil, err
+	}
+	err = s.store.DeleteBackfill(ctx, bfId)
 	if err != nil {
 		logger.WithFields(logrus.Fields{
 			"error": err.Error(),
-			"id":    id,
+			"id":    bfId,
 		}).Error("failed to delete the backfill")
 	}
-	return &empty.Empty{}, err
-}
 
-func doDeleteBackfill(ctx context.Context, id string, store statestore.Service) error {
-	err := store.DeleteBackfill(ctx, id)
-	//TODO: delete pending tickets when statestore is ready
-	return err
+	return &empty.Empty{}, err
 }
 
 // DeleteTicket immediately stops Open Match from using the Ticket for matchmaking and removes the Ticket from state storage.
