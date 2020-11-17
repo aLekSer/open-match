@@ -48,13 +48,17 @@ type redisLocker struct {
 // NewMutex returns a new distributed mutex with given name
 func (rb *redisBackend) NewMutex(key string) *redisLocker {
 	//TODO: make expiry duration configurable
-	m := redsync.NewMutex(key, rs.WithExpiry(5*time.Minute))
+	m := redsync.NewMutex("Mutex/"+key, rs.WithExpiry(5*time.Minute))
 	return &redisLocker{mutex: m}
 }
 
 // Lock locks r. In case it returns an error on failure, you may retry to acquire the lock by calling this method again.
 func (r redisLocker) Lock(ctx context.Context) error {
-	return r.mutex.LockContext(nil)
+	err := r.mutex.LockContext(ctx)
+	if err != nil {
+		return status.Errorf(codes.Unavailable, "Lock, failed to connect to redis: %v", err)
+	}
+	return err
 }
 
 // Unlock unlocks r and returns the status of unlock.
