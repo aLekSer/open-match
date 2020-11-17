@@ -182,32 +182,38 @@ func (s *frontendService) DeleteBackfill(ctx context.Context, req *pb.DeleteBack
 	if bfId == "" {
 		return nil, status.Errorf(codes.InvalidArgument, ".BackfillId is required")
 	}
-
-	m := s.store.NewMutex(bfId + "/id")
-	err := m.Lock(ctx)
+	err := doDeleteBackfill(ctx, bfId, s.store)
 	if err != nil {
 		return nil, err
+	}
+	return &empty.Empty{}, nil
+}
+
+func doDeleteBackfill(ctx context.Context, id string, store statestore.Service) error {
+	m := store.NewMutex(id)
+	err := m.Lock(ctx)
+	if err != nil {
+		return err
 	}
 	defer m.Unlock(ctx)
 
-	_, associatedTickets, err := s.store.GetBackfill(ctx, bfId)
+	_, associatedTickets, err := store.GetBackfill(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil
 	}
 
-	err = s.store.DeleteTicketsFromPendingRelease(ctx, associatedTickets)
+	err = store.DeleteTicketsFromPendingRelease(ctx, associatedTickets)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	err = s.store.DeleteBackfill(ctx, bfId)
+	err = store.DeleteBackfill(ctx, id)
 	if err != nil {
 		logger.WithFields(logrus.Fields{
 			"error": err.Error(),
-			"id":    bfId,
+			"id":    id,
 		}).Error("failed to delete the backfill")
 	}
-
-	return &empty.Empty{}, err
+	return nil
 }
 
 // DeleteTicket immediately stops Open Match from using the Ticket for matchmaking and removes the Ticket from state storage.
