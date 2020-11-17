@@ -98,5 +98,6 @@ func TestAcknowledgeBackfill(t *testing.T) {
 	require.Nil(t, err)
 
 	acknowledgedBf, err := om.Frontend().AcknowledgeBackfill(ctx, &pb.AcknowledgeBackfillRequest{BackfillId: createdBf.Id, Assignment: &pb.Assignment{Connection: "127.0.0.1:54000"}})
+	require.Nil(t, err)
 	require.Equal(t, acknowledgedBf.Id, createdBf.Id)
 }

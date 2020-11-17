@@ -63,7 +63,7 @@ func (r redisLocker) Lock(ctx context.Context) error {
 
 // Unlock unlocks r and returns the status of unlock.
 func (r redisLocker) Unlock(ctx context.Context) (bool, error) {
-	return r.mutex.UnlockContext(nil)
+	return r.mutex.UnlockContext(ctx)
 }
 
 type redisBackend struct {

@@ -316,7 +316,6 @@ func TestDoDeleteBackfill(t *testing.T) {
 			test.preAction(ctx, cancel, store)
 
 			err := doDeleteBackfill(ctx, fakeBackfill.GetId(), store)
-			require.Equal(t, "", err.Error())
 			require.Equal(t, test.wantCode.String(), status.Convert(err).Code().String())
 		})
 	}

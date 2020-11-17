@@ -145,18 +145,25 @@ func (s *frontendService) UpdateBackfill(ctx context.Context, req *pb.UpdateBack
 		return nil, status.Error(codes.Internal, "failed to clone input backfill proto")
 	}
 
-	bfId := backfill.Id
-	if bfId == "" {
+	bfID := backfill.Id
+	if bfID == "" {
 		return nil, status.Error(codes.Internal, "failed to clone input backfill proto")
 	}
-	m := s.store.NewMutex(bfId)
+	m := s.store.NewMutex(bfID)
 
 	err := m.Lock(ctx)
 	if err != nil {
 		return nil, err
 	}
-	defer m.Unlock(ctx)
-	bfStored, associatedTickets, err := s.store.GetBackfill(ctx, bfId)
+	defer func() {
+		if _, err = m.Unlock(ctx); err != nil {
+
+			logger.WithFields(logrus.Fields{
+				"error": err.Error(),
+			}).Error("error on mutex unlock")
+		}
+	}()
+	bfStored, associatedTickets, err := s.store.GetBackfill(ctx, bfID)
 	if err != nil {
 		return nil, err
 	}
@@ -178,11 +185,11 @@ func (s *frontendService) UpdateBackfill(ctx context.Context, req *pb.UpdateBack
 
 // DeleteBackfill deletes a Backfill by its ID.
 func (s *frontendService) DeleteBackfill(ctx context.Context, req *pb.DeleteBackfillRequest) (*empty.Empty, error) {
-	bfId := req.GetBackfillId()
-	if bfId == "" {
+	bfID := req.GetBackfillId()
+	if bfID == "" {
 		return nil, status.Errorf(codes.InvalidArgument, ".BackfillId is required")
 	}
-	err := doDeleteBackfill(ctx, bfId, s.store)
+	err := doDeleteBackfill(ctx, bfID, s.store)
 	if err != nil {
 		return nil, err
 	}
@@ -195,7 +202,14 @@ func doDeleteBackfill(ctx context.Context, id string, store statestore.Service) 
 	if err != nil {
 		return err
 	}
-	defer m.Unlock(ctx)
+	defer func() {
+		if _, err = m.Unlock(ctx); err != nil {
+
+			logger.WithFields(logrus.Fields{
+				"error": err.Error(),
+			}).Error("error on mutex unlock")
+		}
+	}()
 
 	_, associatedTickets, err := store.GetBackfill(ctx, id)
 	if err != nil {
@@ -314,10 +328,15 @@ func (s *frontendService) AcknowledgeBackfill(ctx context.Context, req *pb.Ackno
 	}
 
 	bf, associatedTickets, err := s.store.GetBackfill(ctx, req.GetBackfillId())
+	if err != nil {
+		return nil, err
+	}
 	ag := pb.AssignmentGroup{TicketIds: associatedTickets, Assignment: req.GetAssignment()}
-	s.store.UpdateAssignments(ctx, &pb.AssignTicketsRequest{
-		Assignments: []*pb.AssignmentGroup{&ag},
-	})
+	if len(associatedTickets) != 0 {
+		_, _, err = s.store.UpdateAssignments(ctx, &pb.AssignTicketsRequest{
+			Assignments: []*pb.AssignmentGroup{&ag},
+		})
+	}
 	return bf, err
 }
 
