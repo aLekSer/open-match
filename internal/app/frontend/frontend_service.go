@@ -136,13 +136,20 @@ func doCreateBackfill(ctx context.Context, req *pb.CreateBackfillRequest, store 
 
 // UpdateBackfill updates a Backfill object, if present.
 func (s *frontendService) UpdateBackfill(ctx context.Context, req *pb.UpdateBackfillRequest) (*pb.Backfill, error) {
+	if req.BackfillTicket == nil {
+		return nil, status.Errorf(codes.InvalidArgument, ".BackfillTicket is required")
+	}
+
 	backfill, ok := proto.Clone(req.BackfillTicket).(*pb.Backfill)
 	if !ok {
 		return nil, status.Error(codes.Internal, "failed to clone input backfill proto")
 	}
 
 	bfId := backfill.Id
-	m := s.store.NewMutex(bfId + "/id")
+	if bfId == "" {
+		return nil, status.Error(codes.Internal, "failed to clone input backfill proto")
+	}
+	m := s.store.NewMutex(bfId)
 
 	err := m.Lock(ctx)
 	if err != nil {
@@ -172,6 +179,9 @@ func (s *frontendService) UpdateBackfill(ctx context.Context, req *pb.UpdateBack
 // DeleteBackfill deletes a Backfill by its ID.
 func (s *frontendService) DeleteBackfill(ctx context.Context, req *pb.DeleteBackfillRequest) (*empty.Empty, error) {
 	bfId := req.GetBackfillId()
+	if bfId == "" {
+		return nil, status.Errorf(codes.InvalidArgument, ".BackfillId is required")
+	}
 
 	m := s.store.NewMutex(bfId + "/id")
 	err := m.Lock(ctx)
@@ -290,7 +300,19 @@ func doWatchAssignments(ctx context.Context, id string, sender func(*pb.Assignme
 // AcknowledgeBackfill is used to notify OpenMatch about GameServer connection info.
 // This triggers an assignment process.
 func (s *frontendService) AcknowledgeBackfill(ctx context.Context, req *pb.AcknowledgeBackfillRequest) (*pb.Backfill, error) {
-	return nil, status.Error(codes.Unimplemented, "not implemented")
+	if req.GetBackfillId() == "" {
+		return nil, status.Errorf(codes.InvalidArgument, ".BackfillId is required")
+	}
+	if req.GetAssignment().Connection == "" {
+		return nil, status.Errorf(codes.InvalidArgument, ".Assignment.Connection should be set")
+	}
+
+	bf, associatedTickets, err := s.store.GetBackfill(ctx, req.GetBackfillId())
+	ag := pb.AssignmentGroup{TicketIds: associatedTickets, Assignment: req.GetAssignment()}
+	s.store.UpdateAssignments(ctx, &pb.AssignTicketsRequest{
+		Assignments: []*pb.AssignmentGroup{&ag},
+	})
+	return bf, err
 }
 
 // GetBackfill fetches a Backfill object by its ID.
