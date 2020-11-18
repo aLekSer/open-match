@@ -203,17 +203,20 @@ func doDeleteBackfill(ctx context.Context, id string, store statestore.Service) 
 		return err
 	}
 	defer func() {
-		if _, err = m.Unlock(ctx); err != nil {
-
+		if _, errUnlock := m.Unlock(ctx); errUnlock != nil {
 			logger.WithFields(logrus.Fields{
-				"error": err.Error(),
+				"error": errUnlock.Error(),
 			}).Error("error on mutex unlock")
 		}
 	}()
 
 	_, associatedTickets, err := store.GetBackfill(ctx, id)
+	// Skip NotFound errors if we can not retrieve the Backfill
 	if err != nil {
-		return nil
+		if status.Convert(err).Code() == codes.NotFound {
+			return nil
+		}
+		return err
 	}
 
 	err = store.DeleteTicketsFromPendingRelease(ctx, associatedTickets)
@@ -227,6 +230,7 @@ func doDeleteBackfill(ctx context.Context, id string, store statestore.Service) 
 			"id":    id,
 		}).Error("failed to delete the backfill")
 	}
+	// Deleting of Backfill is inevitable when it is expired, so we don't worry about error here
 	return nil
 }
 
