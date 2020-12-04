@@ -123,7 +123,7 @@ func doCreateBackfill(ctx context.Context, req *pb.CreateBackfillRequest, store 
 
 	backfill.Id = xid.New().String()
 	backfill.CreateTime = ptypes.TimestampNow()
-	backfill.Generation = 1
+	backfill.Generation = 0
 
 	sfCount := 0
 	sfCount += len(backfill.GetSearchFields().GetDoubleArgs())

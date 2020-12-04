@@ -160,10 +160,10 @@ func (om *om) MMFConfigHTTP() *pb.FunctionConfig {
 
 // Testing constants which must match the configuration.  Not parsed in test so
 // that parsing bugs can't hide logic bugs.
-const registrationInterval = time.Millisecond * 200
-const proposalCollectionInterval = time.Millisecond * 200
-const pendingReleaseTimeout = time.Millisecond * 200
-const assignedDeleteTimeout = time.Millisecond * 200
+const registrationInterval = time.Millisecond * 400
+const proposalCollectionInterval = time.Millisecond * 400
+const pendingReleaseTimeout = time.Millisecond * 800
+const assignedDeleteTimeout = time.Millisecond * 800
 
 // configFile is the "cononical" test config.  It exactly matches the configmap
 // which is used in the real cluster tests.
