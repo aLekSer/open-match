@@ -118,13 +118,6 @@ redis:
     port: 26379
   master:
     disableCommands: [] # don't disable 'FLUSH-' commands
-    resources:
-      requests:
-        memory: 3Gi
-        cpu: 3
-      limits:
-        memory: 6Gi
-        cpu: 6
     persistence:
       enabled: false
   metrics:
@@ -137,13 +130,6 @@ redis:
   slave:
     persistence:
       enabled: false
-    resources:
-      requests:
-        memory: 1Gi
-        cpu: 1
-      limits:
-        memory: 2Gi
-        cpu: 2
   sysctlImage:
     # Enable this setting in production if you are running Open Match under Linux environment
     enabled: true
@@ -226,13 +212,6 @@ global:
       minReplicas: 3
       maxReplicas: 10
       targetCPUUtilizationPercentage: 60
-    resources:
-      requests:
-        memory: 1.5Gi
-        cpu: 1.5
-      limits:
-        memory: 3Gi
-        cpu: 2
     # Defines a service account which provides an identity for processes that run in a Pod in Open Match.
     serviceAccount: open-match-unprivileged-service
     # Use this field if you need to override the port type for all services defined in this chart
