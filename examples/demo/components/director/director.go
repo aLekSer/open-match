@@ -83,7 +83,7 @@ func run(ds *components.DemoShared) {
 	{
 		req := &pb.FetchMatchesRequest{
 			Config: &pb.FunctionConfig{
-				Host: "om-function.open-match-demo.svc.cluster.local",
+				Host: "open-match-function.open-match-demo.svc.cluster.local",
 				Port: 50502,
 				Type: pb.FunctionConfig_GRPC,
 			},

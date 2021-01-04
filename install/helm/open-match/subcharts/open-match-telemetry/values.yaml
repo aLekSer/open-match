@@ -30,7 +30,7 @@ prometheus:
     resources:
       requests:
         memory: 4Gi
-        cpu: 2
+        cpu: 1
   prometheus.yml:
       rule_files:
         - /etc/config/rules
@@ -161,8 +161,8 @@ jaeger:
       cluster_size: 2
     resources:
       requests:
-        memory: 4Gi
-        cpu: 2
+        memory: 1Gi
+        cpu: 100m
       limits:
-        memory: 4Gi
-        cpu: 2
+        memory: 1Gi
+        cpu: 200m
