@@ -649,7 +649,7 @@ create-gke-cluster: build/toolchain/bin/kubectl$(EXE_EXTENSION) gcloud
 
 
 create-scale-gke-cluster: GKE_VERSION = 1.15.12-gke.20 # gcloud beta container get-server-config --zone us-west1-a
-create-scale-gke-cluster: GKE_CLUSTER_SHAPE_FLAGS = --machine-type n1-standard-8 --num-nodes 4 --disk-size 50
+create-scale-gke-cluster: GKE_CLUSTER_SHAPE_FLAGS = --machine-type n1-standard-8 --num-nodes 6 --disk-size 50
 create-scale-gke-cluster: GKE_FUTURE_COMPAT_FLAGS = --no-enable-basic-auth --no-issue-client-certificate --enable-ip-alias --metadata disable-legacy-endpoints=true --enable-autoupgrade
 create-scale-gke-cluster: build/toolchain/bin/kubectl$(EXE_EXTENSION) gcloud
 	$(GCLOUD) beta $(GCP_PROJECT_FLAG) container clusters create $(GKE_CLUSTER_NAME) $(GCP_LOCATION_FLAG) $(GKE_CLUSTER_SHAPE_FLAGS) $(GKE_FUTURE_COMPAT_FLAGS) $(GKE_CLUSTER_FLAGS) \
