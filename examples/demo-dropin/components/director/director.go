@@ -18,12 +18,12 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"time"
 
 	"google.golang.org/grpc"
 
 	"open-match.dev/open-match/examples/demo-dropin/components"
+	"open-match.dev/open-match/examples/demo-dropin/updater"
 	"open-match.dev/open-match/pkg/pb"
 )
 
@@ -48,12 +48,18 @@ func isContextDone(ctx context.Context) bool {
 }
 
 type status struct {
-	Status         string
-	LatestMatches  []*pb.Match
-	LatestMatches2 []*pb.Match
+	Status        string
+	LatestMatches []*pb.Match
 }
 
+// Used to store previous matches between calls
+var latestMatches1 []*pb.Match
+var latestMatches2 []*pb.Match
+
 func run(ds *components.DemoShared) {
+	u := updater.NewNested(ds.Ctx, ds.Update)
+	update := u.ForField("Director 1 subprocess")
+	update2 := u.ForField("Director 2 subprocess")
 	defer func() {
 		r := recover()
 		if r != nil {
@@ -62,7 +68,7 @@ func run(ds *components.DemoShared) {
 				err = fmt.Errorf("pkg: %v", r)
 			}
 
-			ds.Update(status{Status: fmt.Sprintf("Encountered error: %s", err.Error())})
+			update(status{Status: fmt.Sprintf("Encountered error: %s", err.Error())})
 			time.Sleep(time.Second * 10)
 		}
 	}()
@@ -71,7 +77,7 @@ func run(ds *components.DemoShared) {
 
 	//////////////////////////////////////////////////////////////////////////////
 	s.Status = "Connecting to backend"
-	ds.Update(s)
+	update(s)
 
 	// See https://open-match.dev/site/docs/guides/api/
 	conn, err := grpc.Dial("open-match-backend.open-match.svc.cluster.local:50505", grpc.WithInsecure())
@@ -83,9 +89,11 @@ func run(ds *components.DemoShared) {
 
 	//////////////////////////////////////////////////////////////////////////////
 	s.Status = "Match Match: Sending Request"
-	ds.Update(s)
+	s.LatestMatches = latestMatches1
+	update(s)
 
 	go func() {
+		s := status{}
 		var matches []*pb.Match
 		defer func() {
 			r := recover()
@@ -95,7 +103,7 @@ func run(ds *components.DemoShared) {
 					err = fmt.Errorf("pkg: %v", r)
 				}
 
-				ds.Update(status{Status: fmt.Sprintf("Encountered error: %s", err.Error())})
+				update(status{Status: fmt.Sprintf("Encountered error: %s", err.Error())})
 				time.Sleep(time.Second * 10)
 			}
 		}()
@@ -135,15 +143,15 @@ func run(ds *components.DemoShared) {
 				panic(err)
 			}
 			matches = append(matches, resp.GetMatch())
-			log.Println("Matches", matches)
+			latestMatches1 = matches
 		}
 		//////////////////////////////////////////////////////////////////////////////
 		s.Status = "Matches Found"
-		s.LatestMatches = matches
-		ds.Update(s)
+		s.LatestMatches = latestMatches1
+		update(s)
 	}()
 	{
-
+		s := status{}
 		var matches []*pb.Match
 		req2 := &pb.FetchMatchesRequest{
 			Config: &pb.FunctionConfig{
@@ -181,18 +189,18 @@ func run(ds *components.DemoShared) {
 				panic(err)
 			}
 			matches = append(matches, resp.GetMatch())
-			log.Println("Matches2", matches)
+			latestMatches2 = matches
 		}
 		//////////////////////////////////////////////////////////////////////////////
 		s.Status = "Matches Found"
-		s.LatestMatches2 = matches
-		ds.Update(s)
+		s.LatestMatches = latestMatches2
+		update2(s)
 	}
 
 	/*
 		//////////////////////////////////////////////////////////////////////////////
 		s.Status = "Assigning Players"
-		ds.Update(s)
+		update(s)
 
 		for _, match := range matches {
 			ids := []string{}
@@ -223,7 +231,7 @@ func run(ds *components.DemoShared) {
 
 	//////////////////////////////////////////////////////////////////////////////
 	s.Status = "Sleeping"
-	ds.Update(s)
+	update(s)
 
 	time.Sleep(time.Second * 5)
 }

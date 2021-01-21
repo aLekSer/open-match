@@ -62,6 +62,11 @@ func TestHandleBackfills(t *testing.T) {
 	}
 }
 
+func TestNewMatch(t *testing.T) {
+	f := newMatch(1, "some_pr", []*pb.Ticket{}, nil)
+	require.NotNil(t, f, "newMatch should not be nil")
+}
+
 func TestMakeMatchWithBackfill(t *testing.T) {
 	for _, testCase := range []struct {
 		name              string

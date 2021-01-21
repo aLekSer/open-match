@@ -27,6 +27,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
 	"github.com/golang/protobuf/ptypes/wrappers"
+	"github.com/rs/xid"
 	"google.golang.org/grpc"
 	"open-match.dev/open-match/pkg/matchfunction"
 	"open-match.dev/open-match/pkg/pb"
@@ -259,8 +260,9 @@ func newBackfill(searchFields *pb.SearchFields, openSlots int) (*pb.Backfill, er
 func newMatch(num int, profile string, tickets []*pb.Ticket, b *pb.Backfill) pb.Match {
 	t := time.Now().Format("2006-01-02T15:04:05.00")
 
+	randId := xid.NewWithTime(time.Now()).String()
 	return pb.Match{
-		MatchId:       fmt.Sprintf("profile-%s-time-%s-num-%d", matchName, t, num),
+		MatchId:       fmt.Sprintf("profile-%s-time-%s-num-%d-%s", matchName, t, num, randId[:4]),
 		MatchProfile:  profile,
 		MatchFunction: matchName,
 		Tickets:       tickets,

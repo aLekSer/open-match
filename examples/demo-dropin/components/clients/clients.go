@@ -24,6 +24,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
 	"github.com/golang/protobuf/ptypes/wrappers"
+	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 
 	"open-match.dev/open-match/examples/demo-dropin/components"
@@ -40,7 +41,7 @@ const (
 func Run(ds *components.DemoShared) {
 	u := updater.NewNested(ds.Ctx, ds.Update)
 
-	for i := 0; i < 2; i++ {
+	for i := 0; i < 4; i++ {
 		name := fmt.Sprintf("fakeplayer_%d", i)
 		go func() {
 			for !isContextDone(ds.Ctx) {
@@ -48,10 +49,9 @@ func Run(ds *components.DemoShared) {
 			}
 		}()
 	}
-	name := fmt.Sprintf("backfill_%d", 0)
 	go func() {
 		for !isContextDone(ds.Ctx) {
-			runBackfillScenario(ds.Ctx, name, u.ForField(name), 0)
+			runBackfillScenario(ds.Ctx, 0, u)
 		}
 	}()
 }
@@ -68,16 +68,22 @@ func isContextDone(ctx context.Context) bool {
 type status struct {
 	Status     string
 	Assignment *pb.Assignment
-	Backfills  []pb.Backfill
-	OpenSlots  int32
 	Ticket     pb.Ticket
+}
+
+type backfillStatus struct {
+	Status    string
+	Backfill  pb.Backfill
+	OpenSlots int32
 }
 
 var once = true
 
 var bfIds = map[string]string{}
 
-func runBackfillScenario(ctx context.Context, name string, update updater.SetFunc, i int) {
+var updaters = map[string]updater.SetFunc{}
+
+func runBackfillScenario(ctx context.Context, i int, u *updater.Updater) {
 	regions := []string{"East", "North"}
 
 	defer func() {
@@ -87,6 +93,7 @@ func runBackfillScenario(ctx context.Context, name string, update updater.SetFun
 			if !ok {
 				err = fmt.Errorf("pkg: %v", r)
 			}
+			update := u.ForField("Backfills")
 			update(status{Status: fmt.Sprintf("Encountered error: %s", err.Error())})
 			time.Sleep(time.Second * 10)
 		}
@@ -99,11 +106,10 @@ func runBackfillScenario(ctx context.Context, name string, update updater.SetFun
 	}
 	defer conn.Close()
 	fe := pb.NewFrontendServiceClient(conn)
-
 	if once {
 
 		for _, i := range regions {
-
+			updaters[i] = u.ForField("backfill_" + i)
 			backfill := pb.Backfill{
 				SearchFields: &pb.SearchFields{
 					StringArgs: map[string]string{
@@ -117,37 +123,31 @@ func runBackfillScenario(ctx context.Context, name string, update updater.SetFun
 			}
 			resp, err := fe.CreateBackfill(ctx, bf)
 			if err != nil {
-				panic(fmt.Sprintf("h %s", err.Error()))
+				panic(errors.Wrapf(err, "create BF error"))
 			}
+			log.Printf("Backfill %s was created %v", i, resp)
 			bfIds[i] = resp.Id
 
 		}
 		once = false
 	}
-	bfs := []pb.Backfill{}
-	s := status{}
+	s := backfillStatus{}
 	for _, i := range regions {
-		bf, err := fe.GetBackfill(ctx, &pb.GetBackfillRequest{BackfillId: bfIds[i]})
+		bf, err := fe.AcknowledgeBackfill(ctx, &pb.AcknowledgeBackfillRequest{BackfillId: bfIds[i], Assignment: &pb.Assignment{Connection: fmt.Sprintf("backfill.%s", i)}})
 		if err != nil {
-			panic(err)
+			panic(errors.Wrapf(err, "p1"))
 		}
-		bfs = append(bfs, *bf)
-
-		bf, err = fe.AcknowledgeBackfill(ctx, &pb.AcknowledgeBackfillRequest{BackfillId: bfIds[i], Assignment: &pb.Assignment{Connection: fmt.Sprintf("backfill.%s", i)}})
-		if err != nil {
-			panic(err)
-		}
-		bfs = append(bfs, *bf)
 		os, err := getOpenSlots(bf)
 		if err != nil {
-			panic(err)
+			panic(errors.Wrapf(err, "p2"))
 		}
 		s.OpenSlots = os
-		log.Printf("bf id %s , open slots: %d", bf.Id, os)
+		if bf != nil {
+			log.Printf("bf id %s , open slots: %d", bf.Id, os)
+			s.Backfill = *bf
+		}
+		updaters[i](s)
 	}
-
-	s.Backfills = bfs
-	update(s)
 }
 
 func runScenario(ctx context.Context, name string, update updater.SetFunc, i int) {
@@ -258,7 +258,7 @@ func helper(ctx context.Context, fe pb.FrontendServiceClient, i int, update upda
 	s.Assignment = assignment
 	update(s)
 
-	time.Sleep(time.Second * 10)
+	time.Sleep(time.Millisecond * time.Duration(rand.Intn(10_000)))
 }
 
 func setOpenSlots(b *pb.Backfill, val int32) error {
