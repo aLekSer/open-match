@@ -88,7 +88,7 @@ spec:
     spec:
       containers:
       - name: om-function
-        image: "gcr.io/open-match-public-images/openmatch-mmf-go-soloduel:0.0.0-dev"
+        image: "gcr.io/open-match-public-images/openmatch-backfill:0.0.0-dev"
         ports:
         - name: grpc
           containerPort: 50502
@@ -125,7 +125,7 @@ spec:
     spec:
       containers:
       - name: om-demo
-        image: "gcr.io/open-match-public-images/openmatch-demo-first-match:0.0.0-dev"
+        image: "gcr.io/open-match-public-images/openmatch-demo-second-match:0.0.0-dev"
         imagePullPolicy: Always
         ports:
         - name: http

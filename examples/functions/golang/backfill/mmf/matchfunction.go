@@ -33,7 +33,7 @@ import (
 )
 
 const (
-	playersPerMatch = 2
+	playersPerMatch = 20
 	openSlotsKey    = "open-slots"
 	matchName       = "backfill-matchfunction"
 )
@@ -101,12 +101,15 @@ func makeMatches(profile *pb.MatchProfile, pool *pb.Pool, tickets []*pb.Ticket, 
 	matches = append(matches, newMatches...)
 
 	if len(remainingTickets) > 0 {
-		match, err := makeMatchWithBackfill(profile, pool, remainingTickets, len(matches))
-		if err != nil {
-			return nil, err
-		}
+		log.Println("creating New backfills")
+		/*
+			match, err := makeMatchWithBackfill(profile, pool, remainingTickets, len(matches))
+			if err != nil {
+				return nil, err
+			}
 
-		matches = append(matches, match)
+			matches = append(matches, match)
+		*/
 	}
 
 	return matches, nil
@@ -119,7 +122,9 @@ func handleBackfills(profile *pb.MatchProfile, tickets []*pb.Ticket, backfills [
 	var matches []*pb.Match
 
 	for _, b := range backfills {
+		log.Println("backfill id", b.Id)
 		openSlots, err := getOpenSlots(b)
+		log.Println("openSlots", openSlots)
 		if err != nil {
 			return nil, tickets, err
 		}
