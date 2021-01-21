@@ -94,7 +94,7 @@ ALTERNATE_TAG = dev
 VERSIONED_CANARY_TAG = $(BASE_VERSION)-canary
 DATED_CANARY_TAG = $(YEAR_MONTH_DAY)-canary
 CANARY_TAG = canary
-GKE_CLUSTER_NAME = om-cluster
+GKE_CLUSTER_NAME = alex-om-cluster
 GCP_REGION = us-west1
 GCP_ZONE = us-west1-a
 GCP_LOCATION = $(GCP_ZONE)
@@ -243,7 +243,7 @@ build-mmf-go-soloduel-image: docker build-base-build-image
 	docker build -f examples/functions/golang/soloduel/Dockerfile -t $(REGISTRY)/openmatch-mmf-go-soloduel:$(TAG) -t $(REGISTRY)/openmatch-mmf-go-soloduel:$(ALTERNATE_TAG) .
 
 build-mmf-go-backfill-image: docker build-base-build-image
-	docker build -f examples/functions/golang/backfill/Dockerfile -t $(REGISTRY)/openmatch-backfill:$(TAG) -t $(REGISTRY)/openmatch-backfill:$(ALTERNATE_TAG) .
+	docker build -f examples/functions/golang/backfill/Dockerfile -t $(REGISTRY)/openmatch-mmf-go-backfill:$(TAG) -t $(REGISTRY)/openmatch-mmf-go-backfill:$(ALTERNATE_TAG) .
 
 #######################################
 ## # Builds and pushes images to your container registry.

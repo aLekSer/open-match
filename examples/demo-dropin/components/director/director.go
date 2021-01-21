@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"time"
 
 	"google.golang.org/grpc"
@@ -28,6 +29,7 @@ import (
 
 const (
 	regionArg = "region"
+	host      = "om-function.open-match-demo.svc.cluster.local"
 )
 
 func Run(ds *components.DemoShared) {
@@ -83,8 +85,8 @@ func run(ds *components.DemoShared) {
 	s.Status = "Match Match: Sending Request"
 	ds.Update(s)
 
-	var matches []*pb.Match
 	go func() {
+		var matches []*pb.Match
 		defer func() {
 			r := recover()
 			if r != nil {
@@ -99,7 +101,7 @@ func run(ds *components.DemoShared) {
 		}()
 		req := &pb.FetchMatchesRequest{
 			Config: &pb.FunctionConfig{
-				Host: "om-function.open-match-demo.svc.cluster.local",
+				Host: host,
 				Port: 50502,
 				Type: pb.FunctionConfig_GRPC,
 			},
@@ -133,6 +135,7 @@ func run(ds *components.DemoShared) {
 				panic(err)
 			}
 			matches = append(matches, resp.GetMatch())
+			log.Println("Matches", matches)
 		}
 		//////////////////////////////////////////////////////////////////////////////
 		s.Status = "Matches Found"
@@ -140,9 +143,11 @@ func run(ds *components.DemoShared) {
 		ds.Update(s)
 	}()
 	{
+
+		var matches []*pb.Match
 		req2 := &pb.FetchMatchesRequest{
 			Config: &pb.FunctionConfig{
-				Host: "open-match-function.open-match-demo.svc.cluster.local",
+				Host: host,
 				Port: 50502,
 				Type: pb.FunctionConfig_GRPC,
 			},
@@ -176,6 +181,7 @@ func run(ds *components.DemoShared) {
 				panic(err)
 			}
 			matches = append(matches, resp.GetMatch())
+			log.Println("Matches2", matches)
 		}
 		//////////////////////////////////////////////////////////////////////////////
 		s.Status = "Matches Found"

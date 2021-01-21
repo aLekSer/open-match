@@ -88,7 +88,7 @@ spec:
     spec:
       containers:
       - name: om-function
-        image: "gcr.io/open-match-public-images/openmatch-backfill:0.0.0-dev"
+        image: "gcr.io/open-match-public-images/openmatch-mmf-go-backfill:0.0.0-dev"
         ports:
         - name: grpc
           containerPort: 50502

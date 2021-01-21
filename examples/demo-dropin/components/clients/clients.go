@@ -17,6 +17,7 @@ package clients
 import (
 	"context"
 	"fmt"
+	"log"
 	"math/rand"
 	"time"
 
@@ -68,6 +69,8 @@ type status struct {
 	Status     string
 	Assignment *pb.Assignment
 	Backfills  []pb.Backfill
+	OpenSlots  int32
+	Ticket     pb.Ticket
 }
 
 var once = true
@@ -122,6 +125,7 @@ func runBackfillScenario(ctx context.Context, name string, update updater.SetFun
 		once = false
 	}
 	bfs := []pb.Backfill{}
+	s := status{}
 	for _, i := range regions {
 		bf, err := fe.GetBackfill(ctx, &pb.GetBackfillRequest{BackfillId: bfIds[i]})
 		if err != nil {
@@ -134,9 +138,14 @@ func runBackfillScenario(ctx context.Context, name string, update updater.SetFun
 			panic(err)
 		}
 		bfs = append(bfs, *bf)
+		os, err := getOpenSlots(bf)
+		if err != nil {
+			panic(err)
+		}
+		s.OpenSlots = os
+		log.Printf("bf id %s , open slots: %d", bf.Id, os)
 	}
 
-	s := status{}
 	s.Backfills = bfs
 	update(s)
 }
@@ -212,6 +221,7 @@ func helper(ctx context.Context, fe pb.FrontendServiceClient, i int, update upda
 			panic(err)
 		}
 		ticketId = resp.Id
+		s.Ticket = *resp
 	}
 
 	//////////////////////////////////////////////////////////////////////////////
@@ -229,8 +239,10 @@ func helper(ctx context.Context, fe pb.FrontendServiceClient, i int, update upda
 			resp, err := stream.Recv()
 			if err != nil {
 				// For now we don't expect to get EOF, so that's still an error worthy of panic.
+				log.Println("assignment err:", err)
 				panic(err)
 			}
+			log.Println("New assignment ", assignment)
 
 			assignment = resp.Assignment
 		}
@@ -261,4 +273,24 @@ func setOpenSlots(b *pb.Backfill, val int32) error {
 
 	b.Extensions[openSlotsKey] = any
 	return nil
+}
+
+func getOpenSlots(b *pb.Backfill) (int32, error) {
+	if b == nil {
+		return 0, fmt.Errorf("expected backfill is not nil")
+	}
+
+	if b.Extensions != nil {
+		if any, ok := b.Extensions[openSlotsKey]; ok {
+			var val wrappers.Int32Value
+			err := ptypes.UnmarshalAny(any, &val)
+			if err != nil {
+				return 0, err
+			}
+
+			return val.Value, nil
+		}
+	}
+
+	return playersPerMatch, nil
 }

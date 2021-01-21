@@ -129,6 +129,7 @@ func handleBackfills(profile *pb.MatchProfile, tickets []*pb.Ticket, backfills [
 			return nil, tickets, err
 		}
 
+		log.Printf("Tickets %v", tickets)
 		var matchTickets []*pb.Ticket
 		for openSlots > 0 && len(tickets) > 0 {
 			matchTickets = append(matchTickets, tickets[0])
