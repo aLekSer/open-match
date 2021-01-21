@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"time"
 
 	"google.golang.org/grpc"
@@ -68,6 +69,7 @@ func run(ds *components.DemoShared) {
 				err = fmt.Errorf("pkg: %v", r)
 			}
 
+			log.Printf("Encountered error: %s", err.Error())
 			update(status{Status: fmt.Sprintf("Encountered error: %s", err.Error())})
 			time.Sleep(time.Second * 10)
 		}
@@ -97,12 +99,14 @@ func run(ds *components.DemoShared) {
 		var matches []*pb.Match
 		defer func() {
 			r := recover()
+
 			if r != nil {
 				err, ok := r.(error)
 				if !ok {
 					err = fmt.Errorf("pkg: %v", r)
 				}
 
+				log.Printf("Encountered error: %s", err.Error())
 				update(status{Status: fmt.Sprintf("Encountered error: %s", err.Error())})
 				time.Sleep(time.Second * 10)
 			}

@@ -94,6 +94,7 @@ func runBackfillScenario(ctx context.Context, i int, u *updater.Updater) {
 				err = fmt.Errorf("pkg: %v", r)
 			}
 			update := u.ForField("Backfills")
+			log.Printf("Encountered error in BackfillScenario: %s", err.Error())
 			update(status{Status: fmt.Sprintf("Encountered error: %s", err.Error())})
 			time.Sleep(time.Second * 10)
 		}
@@ -159,6 +160,7 @@ func runScenario(ctx context.Context, name string, update updater.SetFunc, i int
 				err = fmt.Errorf("pkg: %v", r)
 			}
 
+			log.Printf("Encountered error: %s", err.Error())
 			update(status{Status: fmt.Sprintf("Encountered error: %s", err.Error())})
 			time.Sleep(time.Second * 10)
 		}
@@ -235,6 +237,9 @@ func helper(ctx context.Context, fe pb.FrontendServiceClient, i int, update upda
 		}
 
 		stream, err := fe.WatchAssignments(ctx, req)
+		if err != nil {
+			panic(err)
+		}
 		for assignment.GetConnection() == "" {
 			resp, err := stream.Recv()
 			if err != nil {
@@ -259,6 +264,23 @@ func helper(ctx context.Context, fe pb.FrontendServiceClient, i int, update upda
 	update(s)
 
 	time.Sleep(time.Millisecond * time.Duration(rand.Intn(10_000)))
+	bf, err := fe.GetBackfill(ctx, &pb.GetBackfillRequest{BackfillId: bfIds[region]})
+	if err != nil {
+		panic(errors.Wrapf(err, "%v", bf))
+	}
+	n, err := getOpenSlots(bf)
+	if err != nil {
+		panic(err)
+	}
+	n++
+	err = setOpenSlots(bf, n)
+	if err != nil {
+		panic(err)
+	}
+	bf, err = fe.UpdateBackfill(ctx, &pb.UpdateBackfillRequest{Backfill: bf})
+	if err != nil {
+		panic(errors.Wrapf(err, "%v", bf))
+	}
 }
 
 func setOpenSlots(b *pb.Backfill, val int32) error {
